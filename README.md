@@ -20,6 +20,12 @@ This repository provides an AppImage build script for running Claude Desktop on 
 
 # Usage
 
+## Download Pre-built AppImage
+
+You can download the latest pre-built AppImage from the [Releases](https://github.com/Ownistic/claude-desktop-linux-appimage/releases) page.
+
+## Build Locally
+
 To build an AppImage for Claude Desktop on Linux (Fedora, Ubuntu, Arch Linux, etc.):
 
 1. Clone this repository:
@@ -37,6 +43,13 @@ To build an AppImage for Claude Desktop on Linux (Fedora, Ubuntu, Arch Linux, et
    ```bash
    ./appimage-output/Claude-0.9.3-*.AppImage
    ```
+
+## Automated Builds
+
+This repository uses GitHub Actions to automatically build the AppImage:
+- Builds are triggered on pushes to the main branch, new tags, and releases
+- The built AppImage is uploaded as an artifact for every build
+- When a new tag is pushed or a release is created, the AppImage is automatically attached to the release
 
 The AppImage build script supports:
 - **Fedora/RHEL/CentOS** (dnf-based)
