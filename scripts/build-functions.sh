@@ -3,7 +3,7 @@
 # Build functions for Claude Desktop AppImage creation
 
 # Claude version
-CLAUDE_VERSION="0.9.3"
+CLAUDE_VERSION="0.9.4"
 
 download_claude_desktop() {
     local build_dir="$1"
