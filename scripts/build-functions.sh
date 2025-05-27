@@ -51,7 +51,7 @@ build_patchy_cnb() {
     cd "$patchy_dir"
 
     # Install dependencies
-    npm install
+    npm install --no-package-lock
 
     # Build the module
     npm run build
