@@ -51,7 +51,7 @@ install_dependencies() {
 
     # Additional development packages
     log_info "Installing additional development packages..."
-    safe_install "pacman -S --needed --noconfirm" pkgconf openssl
+    safe_install "pacman -S --needed --noconfirm" pkgconf openssl perl
 
     # Install global npm packages
     install_npm_packages

@@ -112,6 +112,44 @@ process_app_asar() {
     # Extract app.asar
     asar extract app.asar app.asar.contents
 
+    # Apply title bar fix
+    log_info "Applying title bar fix..."
+    SEARCH_BASE="app.asar.contents/.vite/renderer/main_window/assets"
+    TARGET_PATTERN="MainWindowPage-*.js"
+
+    log_info "Searching for '$TARGET_PATTERN' within '$SEARCH_BASE'..."
+    # Find the target file recursively (ensure only one matches)
+    TARGET_FILES=$(find "$SEARCH_BASE" -type f -name "$TARGET_PATTERN" 2>/dev/null)
+    # Count non-empty lines to get the number of files found
+    NUM_FILES=$(echo "$TARGET_FILES" | grep -c . || echo 0)
+    log_info "Found $NUM_FILES matching files"
+
+    if [ "$NUM_FILES" -eq 0 ]; then
+        log_warning "No file matching '$TARGET_PATTERN' found within '$SEARCH_BASE'. Title bar fix not applied."
+    elif [ "$NUM_FILES" -gt 1 ]; then
+        log_warning "Expected exactly one file matching '$TARGET_PATTERN' within '$SEARCH_BASE', but found $NUM_FILES. Title bar fix not applied."
+    else
+        # Exactly one file found
+        TARGET_FILE="$TARGET_FILES" # Assign the found file path
+        log_info "Found target file: $TARGET_FILE"
+
+        log_info "Removing '!' from 'if (!isWindows && isMainWindow) return null;' detection flag to enable title bar"
+        log_info "Attempting to replace patterns like 'if(!VAR1 && VAR2)' with 'if(VAR1 && VAR2)' in $TARGET_FILE..."
+
+        if command_exists perl; then
+            perl -i -pe 's{if\(!(\w+)\s*&&\s*(\w+)\)}{if($1 && $2)}g' "$TARGET_FILE"
+
+            # Verification: Check if the original pattern structure still exists
+            if ! grep -q -E '!\w+&&\w+' "$TARGET_FILE"; then
+                log_success "Successfully replaced patterns like '!VAR1&&VAR2' with 'VAR1&&VAR2' in $TARGET_FILE"
+            else
+                log_warning "Some instances of '!VAR1&&VAR2' might still exist in $TARGET_FILE."
+            fi
+        else
+            log_error "Perl is required for title bar fix but not found. Please install perl."
+        fi
+    fi
+
     # Replace native bindings
     log_info "Replacing native bindings..."
     ensure_dir "app.asar.contents/node_modules/claude-native"

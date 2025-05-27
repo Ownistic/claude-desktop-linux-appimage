@@ -60,7 +60,7 @@ install_dependencies() {
 
     # Additional build dependencies
     log_info "Installing additional build dependencies..."
-    safe_install "apt install -y" pkg-config libssl-dev
+    safe_install "apt install -y" pkg-config libssl-dev perl
 
     # Install global npm packages
     install_npm_packages

@@ -49,6 +49,12 @@ install_dependencies() {
         safe_install "dnf groupinstall -y" "Development Tools"
     fi
 
+    # Ensure perl is installed
+    if ! command_exists perl; then
+        log_info "Installing perl..."
+        safe_install "dnf install -y" perl
+    fi
+
     # Python3 (often needed for node modules)
     if ! command_exists python3; then
         log_info "Installing Python3..."
