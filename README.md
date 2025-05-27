@@ -2,7 +2,9 @@
 
 If you run into an issue with this build script, make an issue here. Don't bug Anthropic about it - they already have enough on their plates.
 
-# Claude Desktop for Linux (Nix)
+# Claude Desktop for Linux (AppImage)
+
+> **Note:** This is a fork of [k3d3/claude-desktop-linux-flake](https://github.com/k3d3/claude-desktop-linux-flake) focused on providing AppImage builds. Special thanks to the original author for creating the initial implementation!
 
 Supports MCP!
 ![image](https://github.com/user-attachments/assets/93080028-6f71-48bd-8e59-5149d148cd45)
@@ -14,50 +16,16 @@ Supports the Tray menu! (Screenshot of running on KDE)
 
 ![image](https://github.com/user-attachments/assets/ba209824-8afb-437c-a944-b53fd9ecd559)
 
-This is a Nix flake for running Claude Desktop on Linux.
+This repository provides an AppImage build script for running Claude Desktop on Linux.
 
 # Usage
 
-To run this once, make sure Nix is installed, then run
-
-```bash
-NIXPKGS_ALLOW_UNFREE=1 nix run github:k3d3/claude-desktop-linux-flake --impure
-```
-
-The "unfree" part is due to the fact that Claude Desktop is not an open source application, and thus, Nix's licensing rules
-are dictated by the application itself, not the build script used to build the application.
-
-## Installation on NixOS with Flakes
-
-Add the following to your `flake.nix`:
-```nix
-inputs.claude-desktop.url = "github:k3d3/claude-desktop-linux-flake";
-inputs.claude-desktop.inputs.nixpkgs.follows = "nixpkgs";
-inputs.claude-desktop.inputs.flake-utils.follows = "flake-utils";
-```
-
-And then the following package to your `environment.systemPackages` or `home.packages`:
-```nix
-inputs.claude-desktop.packages.${system}.claude-desktop
-```
-
-If you would like to run [MCP servers with Claude Desktop](https://modelcontextprotocol.io/quickstart/user) on NixOS, use the `claude-desktop-with-fhs` package. This will allow running MCP servers with calls to `npx`, `uvx`, or `docker` (assuming docker is installed).
-```nix
-inputs.claude-desktop.packages.${system}.claude-desktop-with-fhs
-```
-
-## Other distributions
-
-This repository provides a Nix flake and an AppImage build script for non-Nix distributions.
-
-### AppImage for Other Linux Distributions
-
-To build an AppImage for Claude Desktop on non-Nix distributions (Fedora, Ubuntu, Arch Linux, etc.):
+To build an AppImage for Claude Desktop on Linux (Fedora, Ubuntu, Arch Linux, etc.):
 
 1. Clone this repository:
    ```bash
-   git clone https://github.com/k3d3/claude-desktop-linux-flake.git
-   cd claude-desktop-linux-flake
+   git clone https://github.com/Ownistic/claude-desktop-linux-appimage.git
+   cd claude-desktop-linux-appimage
    ```
 
 2. Run the build script:
@@ -80,6 +48,7 @@ The script will automatically detect your distribution and install the necessary
 **Note:** The AppImage should work on most modern Linux distributions, not just the ones explicitly listed above.
 
 Other known variants:
+- https://github.com/k3d3/claude-desktop-linux-flake - A NixOS builder for Claude Desktop (The original project)
 - https://github.com/aaddrick/claude-desktop-debian - A debian builder for Claude Desktop
 - https://aur.archlinux.org/packages/claude-desktop-bin - An Arch package for Claude Desktop
 - https://github.com/wankdanker/claude-desktop-linux-bash - A bash-based Claude Desktop builder that works on Ubuntu and possibly other Debian derivatives
