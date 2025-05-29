@@ -15,6 +15,56 @@ download_claude_desktop() {
     verify_file "$installer_path"
 }
 
+download_electron() {
+    local build_dir="$1"
+    local arch="$2"
+
+    # Map system architecture to Electron architecture
+    case "$arch" in
+        x86_64|amd64)
+            local electron_arch="x64"
+            ;;
+        aarch64|arm64)
+            local electron_arch="arm64"
+            ;;
+        armv7l|armhf)
+            local electron_arch="armv7l"
+            ;;
+        i386|i686)
+            local electron_arch="ia32"
+            ;;
+        *)
+            log_warning "Unknown architecture: $arch, defaulting to x64"
+            local electron_arch="x64"
+            ;;
+    esac
+
+    local electron_url="https://github.com/electron/electron/releases/download/v${ELECTRON_VERSION}/electron-v${ELECTRON_VERSION}-linux-${electron_arch}.zip"
+    local electron_zip="$build_dir/electron.zip"
+    local electron_dir="$build_dir/electron"
+
+    log_info "Downloading Electron v$ELECTRON_VERSION for $electron_arch..."
+    download_with_retry "$electron_url" "$electron_zip"
+    verify_file "$electron_zip"
+
+    log_info "Extracting Electron..."
+    mkdir -p "$electron_dir"
+    cd "$electron_dir"
+    unzip -q "$electron_zip"
+
+    # Verify electron binary exists
+    if [ ! -f "$electron_dir/electron" ]; then
+        log_error "Electron binary not found after extraction"
+        exit 1
+    fi
+
+    # Make electron executable
+    chmod +x "$electron_dir/electron"
+
+    log_success "Electron v$ELECTRON_VERSION extracted successfully"
+    export ELECTRON_PATH="$electron_dir"
+}
+
 extract_installer() {
     local build_dir="$1"
     local installer_path="$build_dir/Claude-Setup-x64.exe"
@@ -195,13 +245,6 @@ create_appimage() {
 
     log_info "Creating AppImage structure..."
 
-    local appdir="$build_dir/Claude.AppDir"
-    create_appdir_structure "$appdir"
-    extract_icons "$build_dir" "$appdir"
-    copy_app_files "$build_dir" "$appdir"
-    create_desktop_files "$appdir"
-    create_scripts "$appdir"
-
     # Detect architecture
     local arch=$(uname -m)
     case "$arch" in
@@ -223,7 +266,19 @@ create_appimage() {
             ;;
     esac
 
-    local appimage_name="Claude-$CLAUDE_VERSION-$arch.AppImage"
+    # Download Electron for the target architecture
+    download_electron "$build_dir" "$arch"
+
+    local appdir="$build_dir/Claude.AppDir"
+    create_appdir_structure "$appdir"
+    extract_icons "$build_dir" "$appdir"
+    copy_app_files "$build_dir" "$appdir"
+    copy_electron_files "$build_dir" "$appdir"
+    create_desktop_files "$appdir"
+    create_scripts "$appdir"
+
+    # Use APPIMAGE_VERSION for filename instead of CLAUDE_VERSION
+    local appimage_name="Claude-$APPIMAGE_VERSION-claude-$CLAUDE_VERSION-$arch.AppImage"
     local appimage_path="$output_dir/$appimage_name"
 
     # Remove existing AppImage if it exists
@@ -236,14 +291,27 @@ create_appimage() {
     sync
     sleep 1
 
+    # Debug: Check what architectures are detected
+    log_info "Checking architectures in AppDir..."
+    find "$appdir" -type f -executable -exec file {} \; | grep -E "(ELF|PE32|Mach-O)" | head -10 | while read line; do
+        log_info "Binary found: $line"
+    done
+
+    # Set ARCH environment variable for AppImageTool
+    export ARCH="$arch"
+    log_info "Set ARCH environment variable to: $arch"
+
     # Build the AppImage
     log_info "Building AppImage for architecture: $arch"
     cd "$build_dir"
 
+    # Set ARCH environment variable for AppImageTool
+    export ARCH="$arch"
+    
     # Try building with different methods
-    if ! appimagetool --no-appstream "$appdir" "$appimage_path" 2>/dev/null; then
+    if ! ARCH="$arch" appimagetool --no-appstream "$appdir" "$appimage_path" 2>/dev/null; then
         log_warning "AppImageTool failed with --no-appstream, trying without..."
-        if ! appimagetool "$appdir" "$appimage_path"; then
+        if ! ARCH="$arch" appimagetool "$appdir" "$appimage_path"; then
             log_error "AppImage creation failed"
             return 1
         fi
@@ -265,6 +333,7 @@ create_appdir_structure() {
 
     ensure_dir "$appdir/usr/bin"
     ensure_dir "$appdir/usr/lib/claude-desktop"
+    ensure_dir "$appdir/usr/lib/electron"
     ensure_dir "$appdir/usr/share/applications"
     ensure_dir "$appdir/usr/share/icons/hicolor/256x256/apps"
 }
@@ -354,6 +423,30 @@ copy_app_files() {
     cp -r "$build_dir/electron-app/app.asar.unpacked" "$appdir/usr/lib/claude-desktop/"
 }
 
+copy_electron_files() {
+    local build_dir="$1"
+    local appdir="$2"
+
+    log_info "Copying Electron runtime..."
+    
+    # Clean any existing electron files to avoid architecture conflicts
+    if [ -d "$appdir/usr/lib/electron" ]; then
+        rm -rf "$appdir/usr/lib/electron"
+        ensure_dir "$appdir/usr/lib/electron"
+    fi
+    
+    cp -r "$ELECTRON_PATH"/* "$appdir/usr/lib/electron/"
+
+    # Ensure electron binary is executable
+    chmod +x "$appdir/usr/lib/electron/electron"
+    
+    # Verify architecture consistency
+    local electron_arch=$(file "$appdir/usr/lib/electron/electron" | grep -o 'x86-64\|x86_64\|i386\|aarch64\|ARM' | head -1)
+    log_info "Electron binary architecture: $electron_arch"
+
+    log_success "Electron runtime copied successfully"
+}
+
 create_desktop_files() {
     local appdir="$1"
 
@@ -427,9 +520,9 @@ export LD_LIBRARY_PATH="${HERE}/usr/lib:${LD_LIBRARY_PATH}"
 
 # Handle URL protocol
 if [ "$1" = "claude://" ] || [[ "$1" == claude://* ]]; then
-    exec electron "${HERE}/usr/lib/claude-desktop/app.asar" "$@"
+    exec "${HERE}/usr/lib/electron/electron" "${HERE}/usr/lib/claude-desktop/app.asar" "$@"
 else
-    exec electron "${HERE}/usr/lib/claude-desktop/app.asar" "$@"
+    exec "${HERE}/usr/lib/electron/electron" "${HERE}/usr/lib/claude-desktop/app.asar" "$@"
 fi
 EOF
     chmod +x "$appdir/AppRun"
@@ -440,7 +533,7 @@ EOF
 #!/bin/bash
 SCRIPT_DIR=$(dirname "$(readlink -f "$0")")
 export LD_LIBRARY_PATH="${SCRIPT_DIR}/../lib:${LD_LIBRARY_PATH}"
-exec electron "${SCRIPT_DIR}/../lib/claude-desktop/app.asar" "$@"
+exec "${SCRIPT_DIR}/../lib/electron/electron" "${SCRIPT_DIR}/../lib/claude-desktop/app.asar" "$@"
 EOF
     chmod +x "$appdir/usr/bin/claude-desktop"
 }
