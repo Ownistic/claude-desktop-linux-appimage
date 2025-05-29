@@ -37,7 +37,7 @@ jobs:
           # Install dependencies with npm without creating package-lock.json
           npm install --no-package-lock
 
-      - name: Install dependencies
+      - name: Install system dependencies
         run: |
           sudo apt-get update
           sudo apt-get install -y \
@@ -83,6 +83,10 @@ jobs:
 
       - name: Build AppImage
         run: |
+          echo "Building AppImage..."
+          echo "Claude Desktop: ${{ steps.version.outputs.claude_version }}"
+          echo "AppImage: ${{ steps.version.outputs.appimage_version }}"
+          echo "Electron: ${{ steps.version.outputs.electron_version }}"
           ./build-appimage.sh
 
       - name: Verify AppImage
@@ -108,15 +112,74 @@ jobs:
       - name: Upload AppImage as artifact
         uses: actions/upload-artifact@v4
         with:
-          name: claude-desktop-appimage
+          name: claude-desktop-appimage-v${{ steps.version.outputs.appimage_version }}
           path: appimage-output/Claude-*.AppImage
+          retention-days: 30
+
+      - name: Create Release Notes
+        id: release_notes
+        run: |
+          CLAUDE_VERSION="${{ steps.version.outputs.claude_version }}"
+          APPIMAGE_VERSION="${{ steps.version.outputs.appimage_version }}"
+          ELECTRON_VERSION="${{ steps.version.outputs.electron_version }}"
+          
+          # Create release notes
+          cat > release_notes.md << EOF
+          # Claude Desktop AppImage v${APPIMAGE_VERSION}
+          
+          This is a portable AppImage build of Claude Desktop that runs on most Linux distributions without installation.
+          
+          ## 📦 What's Included
+          - **Claude Desktop**: v${CLAUDE_VERSION}
+          - **Electron Runtime**: v${ELECTRON_VERSION} (bundled)
+          - **Architecture**: x86_64
+          
+          ## 🚀 Quick Start
+          
+          1. **Download** the AppImage file
+          2. **Make it executable**: \`chmod +x Claude-${APPIMAGE_VERSION}-claude-${CLAUDE_VERSION}-x86_64.AppImage\`
+          3. **Run it**: \`./Claude-${APPIMAGE_VERSION}-claude-${CLAUDE_VERSION}-x86_64.AppImage\`
+          
+          ## ✨ Features
+          - 🔧 **Self-contained**: No installation required, includes all dependencies
+          - 🐧 **Universal**: Works on most Linux distributions (Ubuntu, Fedora, Arch, etc.)
+          - 🎨 **Native UI**: Full title bar and window controls on Linux
+          - 🔗 **Protocol handler**: Supports claude:// URL scheme
+          - 📋 **System integration**: Desktop entry and file associations
+          
+          ## 🔧 System Requirements
+          - Linux x86_64
+          - GLIBC 2.17+ (available on most modern distributions)
+          - Graphics drivers supporting OpenGL
+          
+          ## 🐛 Troubleshooting
+          
+          If you encounter the error \`/tmp/.mount_*/AppRun: exec: electron: not found\`, this AppImage fixes that issue by bundling Electron directly.
+          
+          For other issues:
+          - Ensure the AppImage has execute permissions
+          - Try running from terminal to see error messages
+          - Check that your system supports AppImages (most modern Linux distributions do)
+          
+          ## 📝 Version History
+          - AppImage version tracks our packaging improvements
+          - Claude Desktop version tracks the official Anthropic releases
+          
+          ---
+          
+          **Note**: This is an unofficial community build. Claude Desktop is developed by Anthropic.
+          EOF
+          
+          echo "release_notes_file=release_notes.md" >> $GITHUB_OUTPUT
 
       - name: Upload AppImage to Release
         if: github.event_name == 'release' || startsWith(github.ref, 'refs/tags/')
         uses: softprops/action-gh-release@v2
         with:
           files: appimage-output/Claude-*.AppImage
+          body_path: ${{ steps.release_notes.outputs.release_notes_file }}
           draft: false
           prerelease: false
+          name: "Claude Desktop AppImage v${{ steps.version.outputs.appimage_version }}"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

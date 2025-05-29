@@ -2,8 +2,14 @@
 
 # Build functions for Claude Desktop AppImage creation
 
-# Claude version
+# Claude Desktop version (official version from Anthropic)
 CLAUDE_VERSION="0.9.3"
+
+# AppImage version (independent of Claude version for multiple releases)
+APPIMAGE_VERSION="0.9.3"
+
+# Electron version to bundle
+ELECTRON_VERSION="36.3.2"
 
 download_claude_desktop() {
     local build_dir="$1"
@@ -303,6 +309,7 @@ create_appimage() {
 
     # Build the AppImage
     log_info "Building AppImage for architecture: $arch"
+    log_info "AppImage version: $APPIMAGE_VERSION (Claude Desktop: $CLAUDE_VERSION)"
     cd "$build_dir"
 
     # Set ARCH environment variable for AppImageTool
@@ -455,7 +462,7 @@ create_desktop_files() {
 [Desktop Entry]
 Name=Claude Desktop
 GenericName=AI Assistant
-Comment=Claude Desktop - AI-powered assistant by Anthropic
+Comment=Claude Desktop - AI-powered assistant by Anthropic (v$CLAUDE_VERSION)
 Exec=claude-desktop
 Icon=claude-desktop
 Type=Application
@@ -479,6 +486,9 @@ EOF
       Claude Desktop is an AI-powered assistant that can help you with various tasks
       including writing, analysis, coding, and creative projects.
     </p>
+    <p>
+      This AppImage packages Claude Desktop v$CLAUDE_VERSION with AppImage version $APPIMAGE_VERSION.
+    </p>
   </description>
   <launchable type="desktop-id">claude-desktop.desktop</launchable>
   <url type="homepage">https://claude.ai</url>
@@ -495,7 +505,11 @@ EOF
     <keyword>Chat</keyword>
   </keywords>
   <releases>
-    <release version="$CLAUDE_VERSION" date="$(date +%Y-%m-%d)"/>
+    <release version="$APPIMAGE_VERSION" date="$(date +%Y-%m-%d)">
+      <description>
+        <p>AppImage version $APPIMAGE_VERSION with Claude Desktop $CLAUDE_VERSION</p>
+      </description>
+    </release>
   </releases>
 </component>
 EOF
