@@ -6,7 +6,7 @@
 CLAUDE_VERSION="0.9.3"
 
 # AppImage version (independent of Claude version for multiple releases)
-APPIMAGE_VERSION="1.0.1"
+APPIMAGE_VERSION="1.0.2"
 
 # Electron version to bundle
 ELECTRON_VERSION="36.3.2"
