@@ -534,9 +534,9 @@ export LD_LIBRARY_PATH="${HERE}/usr/lib:${LD_LIBRARY_PATH}"
 
 # Handle URL protocol
 if [ "$1" = "claude://" ] || [[ "$1" == claude://* ]]; then
-    exec "${HERE}/usr/lib/electron/electron" "${HERE}/usr/lib/claude-desktop/app.asar --gtk-version=3""$@"
+    exec "${HERE}/usr/lib/electron/electron" "${HERE}/usr/lib/claude-desktop/app.asar" --gtk-version=3 --enable-features=WaylandWindowDecorations --ozone-platform-hint=auto "$@"
 else
-    exec "${HERE}/usr/lib/electron/electron" "${HERE}/usr/lib/claude-desktop/app.asar" --gtk-version=3"$@"
+    exec "${HERE}/usr/lib/electron/electron" "${HERE}/usr/lib/claude-desktop/app.asar" --gtk-version=3 --enable-features=WaylandWindowDecorations --ozone-platform-hint=auto "$@"
 fi
 EOF
     chmod +x "$appdir/AppRun"
@@ -547,7 +547,7 @@ EOF
 #!/bin/bash
 SCRIPT_DIR=$(dirname "$(readlink -f "$0")")
 export LD_LIBRARY_PATH="${SCRIPT_DIR}/../lib:${LD_LIBRARY_PATH}"
-exec "${SCRIPT_DIR}/../lib/electron/electron" "${SCRIPT_DIR}/../lib/claude-desktop/app.asar" --gtk-version=3"$@"
+exec "${SCRIPT_DIR}/../lib/electron/electron" "${SCRIPT_DIR}/../lib/claude-desktop/app.asar" --gtk-version=3 --enable-features=WaylandWindowDecorations --ozone-platform-hint=auto "$@"
 EOF
     chmod +x "$appdir/usr/bin/claude-desktop"
 }
