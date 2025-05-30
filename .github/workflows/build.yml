@@ -115,61 +115,59 @@ jobs:
           path: appimage-output/Claude-*.AppImage
           retention-days: 30
 
-      - name: Create Release Notes
+      - name: Extract release notes from changelog
         id: release_notes
         run: |
-          CLAUDE_VERSION="${{ steps.version.outputs.claude_version }}"
+          # Extract the latest version's changelog entry
           APPIMAGE_VERSION="${{ steps.version.outputs.appimage_version }}"
-          ELECTRON_VERSION="${{ steps.version.outputs.electron_version }}"
           
-          # Create release notes
-          cat > release_notes.md << EOF
-          # Claude Desktop AppImage v${APPIMAGE_VERSION}
+          # Use awk to extract the section for the current version
+          awk -v version="$APPIMAGE_VERSION" '
+            /^## \[/ {
+              if ($0 ~ "\\[" version "\\]") {
+                in_section = 1
+                next
+              } else if (in_section) {
+                exit
+              }
+            }
+            in_section && /^## \[/ {
+              exit
+            }
+            in_section {
+              print
+            }
+          ' CHANGELOG.md > current_release_notes.md
           
-          This is a portable AppImage build of Claude Desktop that runs on most Linux distributions without installation.
+          # If the extraction is empty or too short, fall back to a basic template
+          if [ ! -s current_release_notes.md ] || [ $(wc -l < current_release_notes.md) -lt 3 ]; then
+            cat > current_release_notes.md << EOF
+          ## Claude Desktop AppImage v${APPIMAGE_VERSION}
           
-          ## 📦 What's Included
-          - **Claude Desktop**: v${CLAUDE_VERSION}
-          - **Electron Runtime**: v${ELECTRON_VERSION} (bundled)
-          - **Architecture**: x86_64
+          This release packages Claude Desktop v${{ steps.version.outputs.claude_version }} in a portable AppImage format.
           
-          ## 🚀 Quick Start
+          ### ✨ Features
+          - Self-contained Electron runtime (no system dependencies)
+          - Fixed GTK compatibility issues on modern Linux systems
+          - Improved window scaling and sizing detection
+          - Better Wayland and fractional scaling support
           
-          1. **Download** the AppImage file
-          2. **Make it executable**: \`chmod +x Claude-${APPIMAGE_VERSION}-claude-${CLAUDE_VERSION}-x86_64.AppImage\`
-          3. **Run it**: \`./Claude-${APPIMAGE_VERSION}-claude-${CLAUDE_VERSION}-x86_64.AppImage\`
+          ### 🚀 Quick Start
+          \`\`\`bash
+          chmod +x Claude-${APPIMAGE_VERSION}-claude-${{ steps.version.outputs.claude_version }}-x86_64.AppImage
+          ./Claude-${APPIMAGE_VERSION}-claude-${{ steps.version.outputs.claude_version }}-x86_64.AppImage
+          \`\`\`
           
-          ## ✨ Features
-          - 🔧 **Self-contained**: No installation required, includes all dependencies
-          - 🐧 **Universal**: Works on most Linux distributions (Ubuntu, Fedora, Arch, etc.)
-          - 🎨 **Native UI**: Full title bar and window controls on Linux
-          - 🔗 **Protocol handler**: Supports claude:// URL scheme
-          - 📋 **System integration**: Desktop entry and file associations
-          
-          ## 🔧 System Requirements
+          ### 📋 System Requirements
           - Linux x86_64
-          - GLIBC 2.17+ (available on most modern distributions)
-          - Graphics drivers supporting OpenGL
+          - Modern Linux distribution (Ubuntu 20.04+, Fedora 35+, etc.)
+          - Graphics drivers with OpenGL support
           
-          ## 🐛 Troubleshooting
-          
-          If you encounter the error \`/tmp/.mount_*/AppRun: exec: electron: not found\`, this AppImage fixes that issue by bundling Electron directly.
-          
-          For other issues:
-          - Ensure the AppImage has execute permissions
-          - Try running from terminal to see error messages
-          - Check that your system supports AppImages (most modern Linux distributions do)
-          
-          ## 📝 Version History
-          - AppImage version tracks our packaging improvements
-          - Claude Desktop version tracks the official Anthropic releases
-          
-          ---
-          
-          **Note**: This is an unofficial community build. Claude Desktop is developed by Anthropic.
+          For detailed changelog, see [CHANGELOG.md](https://github.com/$(echo $GITHUB_REPOSITORY)/blob/main/CHANGELOG.md).
           EOF
+          fi
           
-          echo "release_notes_file=release_notes.md" >> $GITHUB_OUTPUT
+          echo "release_notes_file=current_release_notes.md" >> $GITHUB_OUTPUT
 
       - name: Upload AppImage to Release
         if: github.event_name == 'release' || startsWith(github.ref, 'refs/tags/')
